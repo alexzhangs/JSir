@@ -1,5 +1,8 @@
 <html>
 <head>
+<style>
+
+</style>
 <title>DHTML test</title>
 <script type="text/javascript">
 var DhtmlTest = function()
@@ -27,7 +30,7 @@ DhtmlTest.sourceId = "__source";
 DhtmlTest.trackId = "__track";
 DhtmlTest.resultId = "__result";
 DhtmlTest.trackMaxCols = 3;
-DhtmlTest.signature = String.fromCharCode('\xff');
+DhtmlTest.signature = '\x00';
 
 DhtmlTest.permanentObj = false; // set this true if document.write() after page loaded does not destroy Window Objects.
 DhtmlTest.scriptPartOneId = "__scriptPartOne";
@@ -46,7 +49,7 @@ DhtmlTest.permanentObjTest = function()
     win.document.write($(DhtmlTest.scriptPartOneId).value);
     win.document.close();
     win.close();
-    delete win;
+    //win = null;
 };
 
 DhtmlTest.abandonScriptTest = function()
@@ -490,50 +493,44 @@ window.onload = __focus;
 </head>
 <body>
 
-<textarea id="__scriptPartOne" style="display: none;">
-<script type="text/javascript">
-function wrt() {
-    document.write(opener.$(opener.DhtmlTest.scriptPartTwoId).value);
-    document.close();
-};
-window.onload=wrt;
-</script>
-</textarea>
-<textarea id="__scriptPartTwo" style="display: none;">
-    <script type="text/javascript">opener.DhtmlTest.permanentObj = true;</script>
-</textarea>
+<textarea id="__scriptPartOne" style="display: none;"><script type="text/javascript">function wrt() { document.write(opener.$(opener.DhtmlTest.scriptPartTwoId).value); document.close(); } window.onload=wrt; </script></textarea>
+<textarea id="__scriptPartTwo" style="display: none;"><script type="text/javascript">opener.DhtmlTest.permanentObj = true;</script></textarea>
 
-<form>
 <p>HTML and Script code here:</p>
-<textarea id="__source" cols="80" rows="20"></textarea>
-<br />
-<input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript only">
-<input type="button" onclick="javascript: dhtmlTest.test(2);" value="Vbscript only">
-<input type="button" onclick="javascript: dhtmlTest.test(3);" value="HTML and/or Script">
-<input type="button" onclick="javascript: dhtmlTest.test(4);" value="New window">
-<input type="button" onclick="javascript: dhtmlTest.test(5);" value="New same window">
-<br />
-<input type="button" onclick="javascript: DhtmlTest.wrapSource('script', 'type=' + DhtmlTest.javascript);" value="Wrap <script>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('script', 'type=' + DhtmlTest.javascript);" value="<script>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('table', null, 'tbody', null, 'tr', null, 'td', null, ' ');" value="<table>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('textarea', 'name=,id=');" value="<textarea>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=text,length=20');" value="<input>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=button,value=button');" value="<button>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('form', 'name=,id=');" value="<form>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('div', 'id=');" value="<div>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('p');" value="<p>">
-<br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('alert();');" value="alert()">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementById()');" value="getElementById()">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByName()[0]');" value="getElementsByName()">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByTagName()[0]');" value="getElementsByTagName()">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('function () { }');" value="function()">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.write();');" value="write()">
-<br />
-<input type="button" onclick="javascript: DhtmlTest.clearSource();" value="Clear">
-<input type="button" onclick="javascript: alert(dhtmlTest.sandbox[dhtmlTest.times].document.getElementById(DhtmlTest.resultId).innerHTML);" value="Result HTML">
-</form>
+<div style="height: 350px;">
 
+<div style="height: 100%; width: 70%; float: left;">
+<textarea id="__source" style="height: 80%; width: 100%; margin-bottom: 10px; resize: none;"></textarea>
+
+<input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript">
+<input type="button" onclick="javascript: dhtmlTest.test(2);" value="VBS">
+<input type="button" onclick="javascript: dhtmlTest.test(3);" value="HTML/Script">
+<input type="button" onclick="javascript: dhtmlTest.test(4);" value="New Window">
+<input type="button" onclick="javascript: dhtmlTest.test(5);" value="Replace">
+<br />
+<input type="button" onclick="javascript: DhtmlTest.clearSource();" value="Clear Code">
+<input type="button" onclick="javascript: DhtmlTest.wrapSource('script', 'type=' + DhtmlTest.javascript);" value="Wrap <script>">
+<input type="button" onclick="javascript: alert(dhtmlTest.sandbox[dhtmlTest.times].document.getElementById(DhtmlTest.resultId).innerHTML);" value="Result">
+</div>
+
+<div style="height: 350px; overflow: hidden; padding-left: 10px;">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('script', 'type=' + DhtmlTest.javascript);" value="<script>"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('function () { }');" value="function( )"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('alert();');" value="alert( )">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.write();');" value="write( )"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementById()');" value="getElById( )"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByName()[0]');" value="getElsByName( )"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByTagName()[0]');" value="getElsByTagName( )"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('table', null, 'tbody', null, 'tr', null, 'td', null, ' ');" value="<table>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('div', 'id=');" value="<div>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('p');" value="<p>"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('form', 'name=,id=');" value="<form>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('textarea', 'name=,id=');" value="<textarea>"><br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=text,length=20');" value="<input>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=button,value=button');" value="<button>"><br />
+</div>
+
+</div>
 <script type="text/javascript">
     DhtmlTest.abilityTest();
     if (typeof(dhtmlTest) == "undefined") {
