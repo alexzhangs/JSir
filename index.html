@@ -2,27 +2,61 @@
 <head>
 <title>DHTML test</title>
 <script type="text/javascript">
-var DhtmlTest = function(sourceId)
+var DhtmlTest = function()
 {
-    this.sourceId = sourceId;
-
     this.times = 0;
     this.sandbox = [];
     this.source = [];
     this.sourceExecuted = [];
-    this.inst = Math.random().toString().substr(2, 10);
+    this.identity = Math.random().toString().substr(2, 10);
 
-    var body = DhtmlTest.body();
+    var body = _("body");
     DhtmlTest.createTrack(body);
     DhtmlTest.createBound(body);
     DhtmlTest.createResult(body);
     DhtmlTest.createBound(body);
 
-    this.doc = DhtmlTest.backup();
-    //alert(this.doc.childNodes[0].innerHTML);
+    if (DhtmlTest.permanentObj) {
+	this.doc = DhtmlTest.backup();
+    }
 };
 
+DhtmlTest.javascript = "text/javascript";
+DhtmlTest.vbscript = "text/vbscript";
+DhtmlTest.sourceId = "__source";
+DhtmlTest.trackId = "__track";
+DhtmlTest.resultId = "__result";
 DhtmlTest.trackMaxCols = 3;
+DhtmlTest.signature = String.fromCharCode('\xff');
+
+DhtmlTest.permanentObj = false; // set this true if document.write() after page loaded does not destroy Window Objects.
+DhtmlTest.scriptPartOneId = "__scriptPartOne";
+DhtmlTest.scriptPartTwoId = "__scriptPartTwo";
+DhtmlTest.abandonScript = false; // set this true if setting innerHTML loses the leading <script> node.
+
+DhtmlTest.abilityTest = function()
+{
+    DhtmlTest.permanentObjTest();
+    DhtmlTest.abandonScriptTest();
+};
+
+DhtmlTest.permanentObjTest = function()
+{
+    var win = open();
+    win.document.write($(DhtmlTest.scriptPartOneId).value);
+    win.document.close();
+    win.close();
+    delete win;
+};
+
+DhtmlTest.abandonScriptTest = function()
+{
+    var div = document.createElement("div");
+    var script = document.createElement("script");
+    div.innerHTML = DhtmlTest.outerHTML(script);
+    DhtmlTest.abandonScript = div.childNodes.length ? false : true;
+    delete div, script;
+};
 
 DhtmlTest.createBound = function(node)
 {
@@ -30,23 +64,24 @@ DhtmlTest.createBound = function(node)
     node.appendChild(hr);
 };
 
+// parameter: node - where to append
 DhtmlTest.createTrack = function(node)
 {
     var table = document.createElement("table");
     var tbody = document.createElement("tbody");
-    table.id = "__track";
+    table.id = DhtmlTest.trackId;
     //table.style = "border-top: solid 1px";
     table.appendChild(tbody);
     node.appendChild(table);
-
 };
 
+// parameter: node - where to append
 DhtmlTest.createResult = function(node)
 {
     var result = document.createElement("div");
-    result.id = "__result";
-    sign = document.createTextNode(String.fromCharCode('\xff'));
-    result.appendChild(sign);
+    result.id = DhtmlTest.resultId;
+    signature = document.createTextNode(DhtmlTest.signature);
+    result.appendChild(signature);
     node.appendChild(result);
 };
 
@@ -71,6 +106,7 @@ DhtmlTest.backup = function()
     }
 };
 
+// parameter: doc - Which restore from
 DhtmlTest.restore = function(doc)
 {
     var clone = doc.cloneNode(true);
@@ -89,31 +125,6 @@ DhtmlTest.restore = function(doc)
     }
 };
 
-DhtmlTest.html = function()
-{
-    return document.getElementsByTagName("html")[0];
-};
-
-DhtmlTest.body = function()
-{
-    return document.getElementsByTagName("body")[0];
-};
-
-DhtmlTest.result = function()
-{
-    return document.getElementById("__result");
-};
-
-DhtmlTest.track = function()
-{
-    return document.getElementById("__track");
-};
-
-DhtmlTest.prototype.textarea = function()
-{
-    return document.getElementById(this.sourceId);
-};
-
 DhtmlTest.prototype.getLastWindow = function()
 {
     for (var i=this.sandbox.length-1; i>-1; i--)
@@ -121,37 +132,184 @@ DhtmlTest.prototype.getLastWindow = function()
     return null;
 };
 
-DhtmlTest.callDoOnClick = function(obj, foo, param)
+DhtmlTest.callDo = function(obj, foo, param)
 {
-    return function(ev){
+    return function(ev){ // ev is default set with the event Object which was produced by where called callDo().
 	obj[foo](param);
+	return false; // To avoid to navigate away from where called callDo();
     };
 };
 
 DhtmlTest.prototype.focusWindow = function(times)
 {
-    if(this.sandbox[times]) this.sandbox[times].focus();
-    return false;
+    var sandbox = this.sandbox[times];
+    sandbox && sandbox.focus && sandbox.focus();
 };
 
 DhtmlTest.prototype.closeWindow = function(times)
 {
-    if(this.sandbox[times]) this.sandbox[times].close();
-    return false;
+    var sandbox = this.sandbox[times];
+    sandbox && !sandbox.closed && sandbox.close();
 };
 
 DhtmlTest.prototype.setSource = function(times)
 {
-    var textNode = document.createTextNode(this.source[times]);
-    DhtmlTest.clearNode(this.textarea());
-    this.textarea().appendChild(textNode);
-    return false;
+    var source = $(DhtmlTest.sourceId);
+
+    DhtmlTest.clearSource();
+    source.value = this.source[times];
+    if (!source.innerHTML) {
+	var textNode = document.createTextNode(this.source[times]);
+	source.appendChild(textNode);
+    }
 };
 
 DhtmlTest.prototype.showSource = function(times)
 {
     alert(this.sourceExecuted[times]);
-    return false;
+};
+
+// parameter: el - Cross Browsers el.outerHTML
+DhtmlTest.outerHTML = function(el)
+{
+    if (!el) { return el; }
+    if (el && el.outerHTML) { return el.outerHTML; }
+    var div = document.createElement("div");
+    div.appendChild(el);
+    var outerHTML = div.innerHTML
+    delete div;
+    return outerHTML;
+};
+
+DhtmlTest.isElement = function(str)
+{
+    try {
+	var testEl = document.createElement(str); // Some Browser like IE will generate XML namespace for none-HTML tags.
+
+	var x, y;
+	x = DhtmlTest.outerHTML(testEl);
+	var htmlEl = document.createElement("html");
+	htmlEl.appendChild(testEl);
+	y = DhtmlTest.outerHTML(testEl);
+	delete testEl, htmlEl;
+	return x == y;
+    }
+    catch (e) {
+	return false; // Most Browsers fall in here for none-HTML tags.
+    }
+    return true;
+};
+
+/*
+ * DhtmlTest.setAttribute(el, 'id=')
+ * DhtmlTest.setAttribute(el, 'id=mydiv')
+ * DhtmlTest.setAttribute(el, 'style=height:50;width:30')
+ */
+DhtmlTest.setAttribute = function(el, attribute)
+{
+    var attr = attribute.split("=");
+    var name = attr[0];
+    var value = attr[1];
+
+    if (!value) {
+	el[name] = value;
+	return;
+    }
+    pair = value.split(";");
+    for (var i=0; i<pair.length; i++) {
+	if (!pair[i]) { break; }
+	pair[i] = pair[i].split(":");
+	if (pair[i][1]) {
+	    el[name][pair[i][0]] = pair[i][1];
+	}
+	else {
+	    el[name] = pair[i][0];
+	}
+    }
+};
+
+/*
+ * DhtmlTest.createElement('img', 'id=myimg,alt=,style=display:none;');
+ */
+DhtmlTest.createElement = function(tag, property)
+{
+    var el = document.createElement(tag);
+    if (property) {
+	var prop = property.split(",");
+	for (var i=0; i<prop.length; i++) {
+	    DhtmlTest.setAttribute(el, prop[i]);
+	}
+    }
+    return el;
+};
+
+DhtmlTest.wrapElement = function(node, tag, property)
+{
+    var el = DhtmlTest.createElement(tag, property);
+    if (null == el.canHaveChildren || el.canHaveChildren) {
+	el.appendChild(node);
+    }
+    else { // IE won't append any child to <script>
+	switch (node.nodeType)
+	    {
+	    case 1: // Element
+		el.text = node.innerHTML;
+	        break;
+	    case 3: // Text
+	    case 4: // CDATASection
+	    case 8: // Comment
+		el.text = node.nodeValue;
+		break;
+	    }
+    }
+    return el;
+};
+
+DhtmlTest.clearSource = function()
+{
+    var source = $(DhtmlTest.sourceId);
+
+    source.value && (source.value = "");
+    source.innerHTML && DhtmlTest.clearNode(source);
+};
+
+// parameter: type - <script type="what?">
+DhtmlTest.wrapSource = function(tag, property)
+{
+    var source = $(DhtmlTest.sourceId);
+    var textNode = document.createTextNode(source.value);
+    var el = DhtmlTest.wrapElement(textNode, tag, property);
+    source.value = DhtmlTest.outerHTML(el);
+};
+
+/*
+ * DhtmlTest.appendSource('table', property, 'tbody', property, 'tr', property, 'td', property, 'textInTd');
+ * DhtmlTest.appendSource(text1, text2, ...);
+ */
+DhtmlTest.appendSource = function()
+{
+    var source = $(DhtmlTest.sourceId);
+    var el = [];
+    var sourceText = "";
+    for (var i=0; i<arguments.length; i++) {
+	if (DhtmlTest.isElement(arguments[i])) {
+	    var tag = arguments[i];
+	    var property = arguments[i+1];
+	    el[i] = DhtmlTest.createElement(tag, property);
+	    el[i-2] && el[i-2].appendChild(el[i]);
+	    i++;
+	}
+	else {
+	    if (el[i-2]) {
+		var textNode = document.createTextNode(arguments[i]);
+		el[i-2].appendChild(textNode);
+	    }
+	    else {
+		sourceText += arguments[i];
+	    }
+	}
+    }
+    source.value += (el[0] ? DhtmlTest.outerHTML(el[0]) : "") + sourceText;
 };
 
 DhtmlTest.clearNode = function(node)
@@ -159,19 +317,18 @@ DhtmlTest.clearNode = function(node)
     if (node) while (node.firstChild) { node.removeChild(node.firstChild); }
 };
 
+// Will create: <node><A HREF=href event=handler(param)>text</A></node>
 DhtmlTest.prototype.newLink = function(node, text, href, event, handler, param)
 {
     var textNode = document.createTextNode(text);
     if (href || event) {
 	var a = document.createElement("a");
 	a.appendChild(textNode);
-	if (href)
+	if (href) {
 	    a.href = href;
+	}
 	if (event) {
-	    a.onclick = DhtmlTest.callDoOnClick(this, handler, param);
-	    //a.onclick = 'javascript: dhtmlTest.showSource(1)';
-	    // a.setAttribute('onclick', dhtmlTest.showSource(1));
-	    //	    alert(a.onclick);
+	    a.onclick = DhtmlTest.callDo(this, handler, param);
 	}
 	node.appendChild(a);
     }
@@ -181,10 +338,10 @@ DhtmlTest.prototype.newLink = function(node, text, href, event, handler, param)
 
 DhtmlTest.prototype.delTrackCell = function(times)
 {
-    this.closeWindow(times);
-    this.sandbox[times] = null;
-    this.source[times] = null;
-    this.sourceExecuted[times] = null;
+    if (this.sandbox[times] != window) { this.closeWindow(times); }
+    delete this.sandbox[times];
+    delete this.source[times];
+    delete this.sourceExecuted[times];
     this.setTrack();
 };
 
@@ -195,11 +352,16 @@ DhtmlTest.prototype.newTrackCell = function(times)
 	var event = "onclick";
 	var sep = " ";
 	var td = document.createElement("td");
-	td.id = "__track_td_" + times;
 
-	//if (this.sandbox[times] != window)
-		handler = "focusWindow";
-	this.newLink(td, "No. " + times, href, event, handler, times);
+	/*
+	if (this.sandbox[times] != window) {
+	    handler = "focusWindow";
+	    this.newLink(td, "No. " + times, href, event, handler, times);
+	}
+	else
+	    this.newLink(td, "No. " + times);
+	*/
+	this.newLink(td, "No. " + times);
 	this.newLink(td, sep);
 
 	handler = "setSource";
@@ -210,12 +372,11 @@ DhtmlTest.prototype.newTrackCell = function(times)
 	this.newLink(td, "Show", href, event, handler, times);
 	this.newLink(td, sep);
 
-	//if (this.sandbox[times] != window)
-		handler = "delTrackCell";
+	handler = "delTrackCell";
 	this.newLink(td, "[x]", href, event, handler, times);
 	this.newLink(td, sep);
 
-	var tbody = DhtmlTest.track().firstChild;
+	var tbody = $(DhtmlTest.trackId).firstChild;
 	var tr = tbody.firstChild;
 	if (!tr || (tr.childNodes.length % DhtmlTest.trackMaxCols) == 0) {
 	    tr = document.createElement("tr");
@@ -226,12 +387,10 @@ DhtmlTest.prototype.newTrackCell = function(times)
 
 DhtmlTest.prototype.setTrack = function()
 {
-    var tbody = DhtmlTest.track().firstChild;
+    var tbody = $(DhtmlTest.trackId).firstChild;
     DhtmlTest.clearNode(tbody);
     for (var i=1; i<=this.times; i++) {
-	if (this.sandbox[i]) {
-	    this.newTrackCell(i);
-	}
+	this.sandbox[i] && this.newTrackCell(i);
     }
 };
 
@@ -242,94 +401,143 @@ DhtmlTest.prototype.test = function(mode)
     switch(mode)
 	{
 	case 1:
-	    type = "text/javascript";
+	    type = DhtmlTest.javascript;
 	    sandbox = window;
 	    break;
 	case 2:
-	    type = "text/vbscript";
+	    type = DhtmlTest.vbscript;
 	    sandbox = window;
 	    break;
 	case 3:
 	    sandbox = window;
 	    break;
 	case 4:
-	    sandbox = window.open("", this.inst + times);
+	    sandbox = window.open("", this.identity + times);
 	    break;
 	case 5:
 	    sandbox = this.getLastWindow();
-	    if (sandbox) sandbox.close();
-	    sandbox = window.open("", this.inst + times);
+	    sandbox && !sandbox.closed && sandbox.close();
+	    sandbox = window.open("", this.identity + times);
 	}
     this.sandbox[times] = sandbox;
-    this.source[times] = this.textarea().value;
+    this.source[times] = $(DhtmlTest.sourceId).value;
     this.sourceExecuted[times] = this.source[times];
 
+    if (this.source[times] == this.source[times-1]) {
+	this.delTrackCell(times-1);
+    }
+
+    if (type) {
+	var textNode = document.createTextNode(this.source[times]);
+	this.sourceExecuted[times] = DhtmlTest.outerHTML(DhtmlTest.wrapElement(textNode, 'script', 'type=' + type));
+    }
+
+    var source = this.sourceExecuted[times];
     if (sandbox == window) {
-	if (times > 1)
-	    // Restore the document
-	    DhtmlTest.restore(this.doc);
-
-	// for being able to read by textarea.innerHTML like textarea.value
-	this.setSource(times);
-
-	if (type) {
-	    var script = document.createElement("script");
-	    script.type = type;
-	    if (null == script.canHaveChildren || script.canHaveChildren) {
-		var textNode = document.createTextNode(this.source[times]);
-		script.appendChild(textNode);
+	if (DhtmlTest.permanentObj) {
+	    if (times > 1) {
+		DhtmlTest.restore(this.doc); // Restore the document
 	    }
-	    else
-		script.text = this.source[times];
-	    this.sourceExecuted[times] = script.outerHTML;
-	}
+	    this.setSource(times); // for being able to read by textarea.innerHTML like textarea.value
+	    htmlSource = _("html").innerHTML.replace(DhtmlTest.signature, source);
 
-	htmlSource = DhtmlTest.html().innerHTML.replace(String.fromCharCode('\xff'), this.sourceExecuted[times]);
+	    sandbox.document.write(htmlSource);
+	    sandbox.document.close();
+	}
+	else {
+	    var div = document.createElement("div");
+	    if (DhtmlTest.abandonScript) {
+		div.innerHTML = DhtmlTest.outerHTML(DhtmlTest.createElement("hr", "style=display:none;")) + source;
+	    }
+	    else {
+		div.innerHTML = source;
+	    }
+	    var result = $(DhtmlTest.resultId);
+	    DhtmlTest.clearNode(result);
+	    result.appendChild(div);
+
+	    var scripts = result.getElementsByTagName("script");
+
+	    for (var i = 0; i < scripts.length; i++) {
+		if (scripts[i].src) {
+		}
+		else if (scripts[i].innerHTML) {
+		    window.execScript && window.execScript(scripts[i].innerHTML);
+		}
+	    }
+	}
     }
     else {
-	DhtmlTest.clearNode(DhtmlTest.result());
-	htmlSource = this.sourceExecuted[times];
-    };
+	DhtmlTest.clearNode($(DhtmlTest.resultId));
+	htmlSource = source;
 
-    sandbox.document.open();
-    sandbox.document.write(htmlSource);
-    sandbox.document.close();
-
-    if (sandbox == window) {
-	// Generate the track links
-	// Have to set this after the document.write(), because there are onclick events handler set in the setTrack();
-	this.setTrack();
+	sandbox.document.write(htmlSource);
+	sandbox.document.close();
     }
+
+    // Generate the track links
+    // Have to set this after the document.write(), because document.write() will destroy the onclick eventsset in the setTrack();
+    this.setTrack();
+
 };
 
-function __focus()
-{
-    document.getElementById("__source").focus();
-};
-
+function $(id) { return document.getElementById(id) };
+function _(tag, index) { return document.getElementsByTagName(tag)[index ? index : 0] };
+function __focus() { $("__source").focus() };
 window.onload = __focus;
-
 </script>
 
 </head>
 <body>
+
+<textarea id="__scriptPartOne" style="display: none;">
+<script type="text/javascript">
+function wrt() {
+    document.write(opener.$(opener.DhtmlTest.scriptPartTwoId).value);
+    document.close();
+};
+window.onload=wrt;
+</script>
+</textarea>
+<textarea id="__scriptPartTwo" style="display: none;">
+    <script type="text/javascript">opener.DhtmlTest.permanentObj = true;</script>
+</textarea>
+
 <form>
 <p>HTML and Script code here:</p>
-<textarea id="__source" cols="60" rows="20"></textarea>
+<textarea id="__source" cols="80" rows="20"></textarea>
 <br />
-<input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript">
-<input type="button" onclick="javascript: dhtmlTest.test(2);" value="VBScript (Only IE)">
+<input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript only">
+<input type="button" onclick="javascript: dhtmlTest.test(2);" value="Vbscript only">
 <input type="button" onclick="javascript: dhtmlTest.test(3);" value="HTML and/or Script">
 <input type="button" onclick="javascript: dhtmlTest.test(4);" value="New window">
 <input type="button" onclick="javascript: dhtmlTest.test(5);" value="New same window">
-<input type="button" onclick="javascript: alert(document.getElementsByTagName('html')[0].innerHTML);" value="New same window">
 <br />
-<input type="reset" value="Clear">
+<input type="button" onclick="javascript: DhtmlTest.wrapSource('script', 'type=' + DhtmlTest.javascript);" value="Wrap <script>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('script', 'type=' + DhtmlTest.javascript);" value="<script>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('table', null, 'tbody', null, 'tr', null, 'td', null, ' ');" value="<table>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('textarea', 'name=,id=');" value="<textarea>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=text,length=20');" value="<input>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=button,value=button');" value="<button>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('form', 'name=,id=');" value="<form>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('div', 'id=');" value="<div>">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('p');" value="<p>">
+<br />
+<input type="button" onclick="javascript: DhtmlTest.appendSource('alert();');" value="alert()">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementById()');" value="getElementById()">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByName()[0]');" value="getElementsByName()">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByTagName()[0]');" value="getElementsByTagName()">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('function () { }');" value="function()">
+<input type="button" onclick="javascript: DhtmlTest.appendSource('document.write();');" value="write()">
+<br />
+<input type="button" onclick="javascript: DhtmlTest.clearSource();" value="Clear">
+<input type="button" onclick="javascript: alert(dhtmlTest.sandbox[dhtmlTest.times].document.getElementById(DhtmlTest.resultId).innerHTML);" value="Result HTML">
 </form>
 
 <script type="text/javascript">
-    if (!dhtmlTest) {
-	var dhtmlTest = new DhtmlTest("__source");
+    DhtmlTest.abilityTest();
+    if (typeof(dhtmlTest) == "undefined") {
+	 var dhtmlTest = new DhtmlTest();
     };
 </script>
 
