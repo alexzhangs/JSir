@@ -1,9 +1,7 @@
 <html>
 <head>
-<style>
-
-</style>
 <title>DHTML test</title>
+
 <script type="text/javascript">
 var DhtmlTest = function()
 {
@@ -11,6 +9,8 @@ var DhtmlTest = function()
     this.sandbox = [];
     this.source = [];
     this.sourceExecuted = [];
+    this.sourceDraft = []; // for storing the temperory editing.
+    this.sourceDraftPointer = 0;
     this.identity = Math.random().toString().substr(2, 10);
 
     var body = _("body");
@@ -30,7 +30,10 @@ DhtmlTest.sourceId = "__source";
 DhtmlTest.trackId = "__track";
 DhtmlTest.resultId = "__result";
 DhtmlTest.trackMaxCols = 3;
-DhtmlTest.signature = '\x00';
+DhtmlTest.signature = "\x10\x7f\x00";
+DhtmlTest.currDraft = "__currDraft";
+DhtmlTest.privDraft = "__privDraft";
+DhtmlTest.nextDraft = "__nextDraft";
 
 DhtmlTest.permanentObj = false; // set this true if document.write() after page loaded does not destroy Window Objects.
 DhtmlTest.scriptPartOneId = "__scriptPartOne";
@@ -83,8 +86,11 @@ DhtmlTest.createResult = function(node)
 {
     var result = document.createElement("div");
     result.id = DhtmlTest.resultId;
-    signature = document.createTextNode(DhtmlTest.signature);
-    result.appendChild(signature);
+    if (DhtmlTest.permanentObj) {
+	result.style.display = "none";
+	signature = document.createTextNode(DhtmlTest.signature);
+	result.appendChild(signature);
+    }
     node.appendChild(result);
 };
 
@@ -155,15 +161,35 @@ DhtmlTest.prototype.closeWindow = function(times)
     sandbox && !sandbox.closed && sandbox.close();
 };
 
-DhtmlTest.prototype.setSource = function(times)
+DhtmlTest.prototype.reuseSource = function(times)
 {
     var source = $(DhtmlTest.sourceId);
+    this.setDraft();
+    DhtmlTest.setTextarea(source, this.source[times]);
+};
 
-    DhtmlTest.clearSource();
-    source.value = this.source[times];
-    if (!source.innerHTML) {
-	var textNode = document.createTextNode(this.source[times]);
-	source.appendChild(textNode);
+DhtmlTest.exactScriptType = function(type)
+{
+    return type.split("/")[1];
+};
+
+DhtmlTest.clearNode = function(node)
+{
+    if (node) while (node.firstChild) { node.removeChild(node.firstChild); }
+};
+
+DhtmlTest.clearTextarea = function(el)
+{
+    el.value && (el.value = "");
+    el.innerHTML && DhtmlTest.clearNode(el);
+};
+
+DhtmlTest.setTextarea = function(el, value) {
+    DhtmlTest.clearTextarea(el);
+    el.value = value;
+    if (!el.innerHTML) {
+	var textNode = document.createTextNode(value);
+	el.appendChild(textNode);
     }
 };
 
@@ -268,12 +294,60 @@ DhtmlTest.wrapElement = function(node, tag, property)
     return el;
 };
 
-DhtmlTest.clearSource = function()
+DhtmlTest.prototype.setDraft = function()
 {
     var source = $(DhtmlTest.sourceId);
+    if (source.value != "") {
+	    var fresh = true;
+	    for (var i=1; i<=this.times; i++) {
+		if (source.value == this.source[i]) {
+		    fresh = false;
+		    break;
+		}
+	    }
+	    for (var i=0; i<this.sourceDraft.length; i++) {
+		if (source.value == this.sourceDraft[i]) {
+		    fresh = false;
+		    break;
+		}
+	    }
+	    fresh && this.sourceDraft.push(source.value);
+    }
+    this.setDraftButton();
+};
 
-    source.value && (source.value = "");
-    source.innerHTML && DhtmlTest.clearNode(source);
+DhtmlTest.prototype.setDraftButton = function()
+{
+    var currDraft = $(DhtmlTest.currDraft);
+    var privDraft = $(DhtmlTest.privDraft);
+    var nextDraft = $(DhtmlTest.nextDraft);
+
+    if (this.sourceDraftPointer >= this.sourceDraft.length || this.sourceDraftPointer < 0) {
+	this.sourceDraftPointer = this.sourceDraft.length-1;
+    }
+
+    currDraft.value = "Draft " + (this.sourceDraftPointer+1) + "/" + this.sourceDraft.length;
+    currDraft.disabled = this.sourceDraft.length ? false : true;
+    privDraft.disabled = this.sourceDraftPointer > 0 ? false : true;
+    nextDraft.disabled = (this.sourceDraft.length - this.sourceDraftPointer) > 1 ? false : true;
+};
+
+DhtmlTest.prototype.getDraft = function(dir)
+{
+    this.sourceDraftPointer += dir;
+    var draft = this.sourceDraft[this.sourceDraftPointer];
+    if (draft) {
+	this.setDraft();
+	DhtmlTest.setTextarea($(DhtmlTest.sourceId), draft);
+	this.setDraft();
+    }
+};
+
+DhtmlTest.prototype.clearSource = function()
+{
+    var source = $(DhtmlTest.sourceId);
+    this.setDraft();
+    DhtmlTest.clearTextarea(source);
 };
 
 // parameter: type - <script type="what?">
@@ -313,11 +387,6 @@ DhtmlTest.appendSource = function()
 	}
     }
     source.value += (el[0] ? DhtmlTest.outerHTML(el[0]) : "") + sourceText;
-};
-
-DhtmlTest.clearNode = function(node)
-{
-    if (node) while (node.firstChild) { node.removeChild(node.firstChild); }
 };
 
 // Will create: <node><A HREF=href event=handler(param)>text</A></node>
@@ -367,7 +436,7 @@ DhtmlTest.prototype.newTrackCell = function(times)
 	this.newLink(td, "No. " + times);
 	this.newLink(td, sep);
 
-	handler = "setSource";
+	handler = "reuseSource";
 	this.newLink(td, "Reuse", href, event, handler, times);
 	this.newLink(td, sep);
 
@@ -397,8 +466,30 @@ DhtmlTest.prototype.setTrack = function()
     }
 };
 
+DhtmlTest.prototype.removeDup = function()
+{
+    for (var i=1; i<this.times; i++) {
+	if (this.source[this.times] == this.source[i]) {
+	    this.delTrackCell(i);
+	}
+    }
+
+    for (var i=0; i<this.sourceDraft.length; i++) {
+	if (this.source[this.times] == this.sourceDraft[i]) {
+	    this.sourceDraft.splice(i, 1);
+	}
+    }
+};
+
+DhtmlTest.prototype.setTryCatch = function()
+{
+    var pattern = /(<script[^>]*>)(.*?(?!<\/script>).*?)(<\/script>)/ig;
+    this.sourceExecuted[this.times] = this.sourceExecuted[this.times].replace(pattern, "$1 try { $2 } catch(e) { if (__error == null) var __error = []; __error.push(e.name + ' : ' + e.message) } $3");
+};
+
 DhtmlTest.prototype.test = function(mode)
 {
+    if ($(DhtmlTest.sourceId).value == "") return;
     var times = ++this.times;
     var sandbox, type = null;
     switch(mode)
@@ -422,18 +513,19 @@ DhtmlTest.prototype.test = function(mode)
 	    sandbox && !sandbox.closed && sandbox.close();
 	    sandbox = window.open("", this.identity + times);
 	}
+
     this.sandbox[times] = sandbox;
     this.source[times] = $(DhtmlTest.sourceId).value;
     this.sourceExecuted[times] = this.source[times];
+    this.removeDup();
 
-    if (this.source[times] == this.source[times-1]) {
-	this.delTrackCell(times-1);
-    }
-
+    // wrap with <script> tag if need.
     if (type) {
 	var textNode = document.createTextNode(this.source[times]);
-	this.sourceExecuted[times] = DhtmlTest.outerHTML(DhtmlTest.wrapElement(textNode, 'script', 'type=' + type));
+	var script = DhtmlTest.wrapElement(textNode, 'script', 'type=' + type);
+	this.sourceExecuted[times] = DhtmlTest.outerHTML(script);
     }
+    this.setTryCatch();
 
     var source = this.sourceExecuted[times];
     if (sandbox == window) {
@@ -441,7 +533,8 @@ DhtmlTest.prototype.test = function(mode)
 	    if (times > 1) {
 		DhtmlTest.restore(this.doc); // Restore the document
 	    }
-	    this.setSource(times); // for being able to read by textarea.innerHTML like textarea.value
+	    DhtmlTest.setTextarea($(DhtmlTest.sourceId), this.source[times]); // for being able to read by textarea.innerHTML like textarea.value
+	    $(DhtmlTest.resultId).style.display = "block";
 	    htmlSource = _("html").innerHTML.replace(DhtmlTest.signature, source);
 
 	    sandbox.document.write(htmlSource);
@@ -459,13 +552,18 @@ DhtmlTest.prototype.test = function(mode)
 	    DhtmlTest.clearNode(result);
 	    result.appendChild(div);
 
+	    // Something goes interesting here.
+            // IE and Firefox will go here, but not Chome because its permanentObj is true.
+	    // At this moment, Firefox has finished all execution whatever the embeded or the external by SRC.
+	    // All following code are actually for IE.
+	    // The two method(Reassign SRC and execScript) will pull the triger of scripting in IE but not Firefox.
 	    var scripts = result.getElementsByTagName("script");
-
 	    for (var i = 0; i < scripts.length; i++) {
 		if (scripts[i].src) {
+		    scripts[i].src = scripts[i].src;
 		}
 		else if (scripts[i].innerHTML) {
-		    window.execScript && window.execScript(scripts[i].innerHTML);
+		    window.execScript && window.execScript(scripts[i].innerHTML, DhtmlTest.exactScriptType(scripts[i].type));
 		}
 	    }
 	}
@@ -481,7 +579,20 @@ DhtmlTest.prototype.test = function(mode)
     // Generate the track links
     // Have to set this after the document.write(), because document.write() will destroy the onclick eventsset in the setTrack();
     this.setTrack();
+    this.setDraftButton();
 
+    if (sandbox.__error) {
+	var span = DhtmlTest.createElement("span", "style=color:red");
+	var error;
+	for (var i=0; i<sandbox.__error.length; i++) {
+	    error = document.createTextNode((i+1) + ". " + sandbox.__error[i]);
+	    var br = DhtmlTest.createElement("br");
+	    span.appendChild(br);
+	    span.appendChild(error);
+	}
+	$(DhtmlTest.resultId).appendChild(span);
+	sandbox.__error = null;
+    }
 };
 
 function $(id) { return document.getElementById(id) };
@@ -508,9 +619,12 @@ window.onload = __focus;
 <input type="button" onclick="javascript: dhtmlTest.test(4);" value="New Window">
 <input type="button" onclick="javascript: dhtmlTest.test(5);" value="Replace">
 <br />
-<input type="button" onclick="javascript: DhtmlTest.clearSource();" value="Clear Code">
+<input type="button" onclick="javascript: dhtmlTest.clearSource();" value="Clear Code">
 <input type="button" onclick="javascript: DhtmlTest.wrapSource('script', 'type=' + DhtmlTest.javascript);" value="Wrap <script>">
 <input type="button" onclick="javascript: alert(dhtmlTest.sandbox[dhtmlTest.times].document.getElementById(DhtmlTest.resultId).innerHTML);" value="Result">
+<input type="button" onclick="javascript: dhtmlTest.getDraft(-1);" value=" << " id="__privDraft" disabled>
+<input type="button" onclick="javascript: dhtmlTest.getDraft(0);" value="Draft 0/0" id="__currDraft"disabled>
+<input type="button" onclick="javascript: dhtmlTest.getDraft(1);" value=" >> " id="__nextDraft" disabled>
 </div>
 
 <div style="height: 350px; overflow: hidden; padding-left: 10px;">
