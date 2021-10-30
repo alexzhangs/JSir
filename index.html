@@ -31,10 +31,12 @@ DhtmlTest.trackId = "__track";
 DhtmlTest.resultId = "__result";
 DhtmlTest.trackMaxCols = 3;
 DhtmlTest.signature = "\x10\x7f\x00";
+DhtmlTest.vbscriptId = "__vbscript";
 DhtmlTest.currDraft = "__currDraft";
 DhtmlTest.privDraft = "__privDraft";
 DhtmlTest.nextDraft = "__nextDraft";
 
+DhtmlTest.noneVbscript = true;
 DhtmlTest.permanentObj = false; // set this true if document.write() after page loaded does not destroy Window Objects.
 DhtmlTest.scriptPartOneId = "__scriptPartOne";
 DhtmlTest.scriptPartTwoId = "__scriptPartTwo";
@@ -42,8 +44,17 @@ DhtmlTest.abandonScript = false; // set this true if setting innerHTML loses the
 
 DhtmlTest.abilityTest = function()
 {
+    DhtmlTest.noneVbscriptTest();
     DhtmlTest.permanentObjTest();
     DhtmlTest.abandonScriptTest();
+};
+
+DhtmlTest.noneVbscriptTest = function()
+{
+    try {
+	window.execScript("DhtmlTest.noneVbscript=false", "vbscript");
+    }
+    catch(e) { }
 };
 
 DhtmlTest.permanentObjTest = function()
@@ -483,8 +494,27 @@ DhtmlTest.prototype.removeDup = function()
 
 DhtmlTest.prototype.setTryCatch = function()
 {
-    var pattern = /(<script[^>]*>)(.*?(?!<\/script>).*?)(<\/script>)/ig;
-    this.sourceExecuted[this.times] = this.sourceExecuted[this.times].replace(pattern, "$1 try { $2 } catch(e) { if (__error == null) var __error = []; __error.push(e.name + ' : ' + e.message) } $3");
+    //var pattern = /(<script([^>](?!vbscript))*>)([\s\S]*?)(<\/script>)/ig;
+    var pattern = /(<script([^>](?!vbscript)(?!src))*>)([\s\S]*?)(<\/script>)/ig;
+    this.sourceExecuted[this.times] = this.sourceExecuted[this.times].replace(pattern, "$1 try { $3 } catch(e) { if (__error == null) var __error = []; __error.push(e.name + ' : ' + e.message) } $4");
+};
+
+DhtmlTest.prototype.setError = function()
+{
+    var sandbox = this.sandbox[this.times];
+
+    if (sandbox.__error) {
+	var span = DhtmlTest.createElement("span", "style=color:red");
+	var error;
+	for (var i=0; i<sandbox.__error.length; i++) {
+	    error = document.createTextNode((i+1) + ". " + sandbox.__error[i]);
+	    var br = DhtmlTest.createElement("br");
+	    span.appendChild(br);
+	    span.appendChild(error);
+	}
+	$(DhtmlTest.resultId).appendChild(span);
+	sandbox.__error = null;
+    }
 };
 
 DhtmlTest.prototype.test = function(mode)
@@ -580,19 +610,7 @@ DhtmlTest.prototype.test = function(mode)
     // Have to set this after the document.write(), because document.write() will destroy the onclick eventsset in the setTrack();
     this.setTrack();
     this.setDraftButton();
-
-    if (sandbox.__error) {
-	var span = DhtmlTest.createElement("span", "style=color:red");
-	var error;
-	for (var i=0; i<sandbox.__error.length; i++) {
-	    error = document.createTextNode((i+1) + ". " + sandbox.__error[i]);
-	    var br = DhtmlTest.createElement("br");
-	    span.appendChild(br);
-	    span.appendChild(error);
-	}
-	$(DhtmlTest.resultId).appendChild(span);
-	sandbox.__error = null;
-    }
+    this.setError();
 };
 
 function $(id) { return document.getElementById(id) };
@@ -614,7 +632,7 @@ window.onload = __focus;
 <textarea id="__source" style="height: 80%; width: 100%; margin-bottom: 10px; resize: none;"></textarea>
 
 <input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript">
-<input type="button" onclick="javascript: dhtmlTest.test(2);" value="VBS">
+<input type="button" onclick="javascript: dhtmlTest.test(2);" value="VBS" id="__vbscript" disabled>
 <input type="button" onclick="javascript: dhtmlTest.test(3);" value="HTML/Script">
 <input type="button" onclick="javascript: dhtmlTest.test(4);" value="New Window">
 <input type="button" onclick="javascript: dhtmlTest.test(5);" value="Replace">
@@ -647,6 +665,7 @@ window.onload = __focus;
 </div>
 <script type="text/javascript">
     DhtmlTest.abilityTest();
+    $(DhtmlTest.vbscriptId).disabled = DhtmlTest.noneVbscript;
     if (typeof(dhtmlTest) == "undefined") {
 	 var dhtmlTest = new DhtmlTest();
     };
