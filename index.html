@@ -1,9 +1,9 @@
 <html>
 <head>
-<title>DHTML test</title>
+<title>JSIR</title>
 
 <script type="text/javascript">
-var DhtmlTest = function()
+var Jsir = function()
 {
     this.times = 0;
     this.sandbox = [];
@@ -14,98 +14,98 @@ var DhtmlTest = function()
     this.identity = Math.random().toString().substr(2, 10);
 
     var body = _("body");
-    DhtmlTest.createTrack(body);
-    DhtmlTest.createBound(body);
-    DhtmlTest.createResult(body);
-    DhtmlTest.createBound(body);
+    Jsir.createTrack(body);
+    Jsir.createBound(body);
+    Jsir.createResult(body);
+    Jsir.createBound(body);
 
-    if (DhtmlTest.permanentObj) {
-	this.doc = DhtmlTest.backup();
+    if (Jsir.permanentObj) {
+	this.doc = Jsir.backup();
     }
 };
 
-DhtmlTest.javascript = "text/javascript";
-DhtmlTest.vbscript = "text/vbscript";
-DhtmlTest.sourceId = "__source";
-DhtmlTest.trackId = "__track";
-DhtmlTest.resultId = "__result";
-DhtmlTest.trackMaxCols = 3;
-DhtmlTest.signature = "\x10\x7f\x00";
-DhtmlTest.vbscriptId = "__vbscript";
-DhtmlTest.currDraft = "__currDraft";
-DhtmlTest.privDraft = "__privDraft";
-DhtmlTest.nextDraft = "__nextDraft";
+Jsir.javascript = "text/javascript";
+Jsir.vbscript = "text/vbscript";
+Jsir.sourceId = "__source";
+Jsir.trackId = "__track";
+Jsir.resultId = "__result";
+Jsir.trackMaxCols = 3;
+Jsir.signature = "\x10\x7f\x00";
+Jsir.vbscriptId = "__vbscript";
+Jsir.currDraft = "__currDraft";
+Jsir.privDraft = "__privDraft";
+Jsir.nextDraft = "__nextDraft";
 
-DhtmlTest.noneVbscript = true;
-DhtmlTest.permanentObj = false; // set this true if document.write() after page loaded does not destroy Window Objects.
-DhtmlTest.scriptPartOneId = "__scriptPartOne";
-DhtmlTest.scriptPartTwoId = "__scriptPartTwo";
-DhtmlTest.abandonScript = false; // set this true if setting innerHTML loses the leading <script> node.
+Jsir.noneVbscript = true;
+Jsir.permanentObj = false; // set this true if document.write() after page loaded does not destroy Window Objects.
+Jsir.scriptPartOneId = "__scriptPartOne";
+Jsir.scriptPartTwoId = "__scriptPartTwo";
+Jsir.abandonScript = false; // set this true if setting innerHTML loses the leading <script> node.
 
-DhtmlTest.abilityTest = function()
+Jsir.abilityTest = function()
 {
-    DhtmlTest.noneVbscriptTest();
-    DhtmlTest.permanentObjTest();
-    DhtmlTest.abandonScriptTest();
+    Jsir.noneVbscriptTest();
+    Jsir.permanentObjTest();
+    Jsir.abandonScriptTest();
 };
 
-DhtmlTest.noneVbscriptTest = function()
+Jsir.noneVbscriptTest = function()
 {
     try {
-	window.execScript("DhtmlTest.noneVbscript=false", "vbscript");
+	window.execScript("Jsir.noneVbscript=false", "vbscript");
     }
     catch(e) { }
 };
 
-DhtmlTest.permanentObjTest = function()
+Jsir.permanentObjTest = function()
 {
     var win = open();
-    win.document.write($(DhtmlTest.scriptPartOneId).value);
+    win.document.write($(Jsir.scriptPartOneId).value);
     win.document.close();
     win.close();
     //win = null;
 };
 
-DhtmlTest.abandonScriptTest = function()
+Jsir.abandonScriptTest = function()
 {
     var div = document.createElement("div");
     var script = document.createElement("script");
-    div.innerHTML = DhtmlTest.outerHTML(script);
-    DhtmlTest.abandonScript = div.childNodes.length ? false : true;
+    div.innerHTML = Jsir.outerHTML(script);
+    Jsir.abandonScript = div.childNodes.length ? false : true;
     delete div, script;
 };
 
-DhtmlTest.createBound = function(node)
+Jsir.createBound = function(node)
 {
     var hr = document.createElement("hr");
     node.appendChild(hr);
 };
 
 // parameter: node - where to append
-DhtmlTest.createTrack = function(node)
+Jsir.createTrack = function(node)
 {
     var table = document.createElement("table");
     var tbody = document.createElement("tbody");
-    table.id = DhtmlTest.trackId;
+    table.id = Jsir.trackId;
     //table.style = "border-top: solid 1px";
     table.appendChild(tbody);
     node.appendChild(table);
 };
 
 // parameter: node - where to append
-DhtmlTest.createResult = function(node)
+Jsir.createResult = function(node)
 {
     var result = document.createElement("div");
-    result.id = DhtmlTest.resultId;
-    if (DhtmlTest.permanentObj) {
+    result.id = Jsir.resultId;
+    if (Jsir.permanentObj) {
 	result.style.display = "none";
-	signature = document.createTextNode(DhtmlTest.signature);
+	signature = document.createTextNode(Jsir.signature);
 	result.appendChild(signature);
     }
     node.appendChild(result);
 };
 
-DhtmlTest.backup = function()
+Jsir.backup = function()
 {
     if (document.createRange) {
         var r = document.createRange();
@@ -127,7 +127,7 @@ DhtmlTest.backup = function()
 };
 
 // parameter: doc - Which restore from
-DhtmlTest.restore = function(doc)
+Jsir.restore = function(doc)
 {
     var clone = doc.cloneNode(true);
     if (document.createRange) {
@@ -138,21 +138,21 @@ DhtmlTest.restore = function(doc)
 	document.appendChild(clone);
     }
     else {
-	DhtmlTest.clearNode(document);
+	Jsir.clearNode(document);
 	for (var i=0; i<clone.childNodes.length; i++) {
 	    document.appendChild(clone.childNodes[i]);
 	}
     }
 };
 
-DhtmlTest.prototype.getLastWindow = function()
+Jsir.prototype.getLastWindow = function()
 {
     for (var i=this.sandbox.length-1; i>-1; i--)
 	if (this.sandbox[i] != window) return this.sandbox[i];
     return null;
 };
 
-DhtmlTest.callDo = function(obj, foo, param)
+Jsir.callDo = function(obj, foo, param)
 {
     return function(ev){ // ev is default set with the event Object which was produced by where called callDo().
 	obj[foo](param);
@@ -160,43 +160,43 @@ DhtmlTest.callDo = function(obj, foo, param)
     };
 };
 
-DhtmlTest.prototype.focusWindow = function(times)
+Jsir.prototype.focusWindow = function(times)
 {
     var sandbox = this.sandbox[times];
     sandbox && sandbox.focus && sandbox.focus();
 };
 
-DhtmlTest.prototype.closeWindow = function(times)
+Jsir.prototype.closeWindow = function(times)
 {
     var sandbox = this.sandbox[times];
     sandbox && !sandbox.closed && sandbox.close();
 };
 
-DhtmlTest.prototype.reuseSource = function(times)
+Jsir.prototype.reuseSource = function(times)
 {
-    var source = $(DhtmlTest.sourceId);
+    var source = $(Jsir.sourceId);
     this.setDraft();
-    DhtmlTest.setTextarea(source, this.source[times]);
+    Jsir.setTextarea(source, this.source[times]);
 };
 
-DhtmlTest.exactScriptType = function(type)
+Jsir.exactScriptType = function(type)
 {
     return type.split("/")[1];
 };
 
-DhtmlTest.clearNode = function(node)
+Jsir.clearNode = function(node)
 {
     if (node) while (node.firstChild) { node.removeChild(node.firstChild); }
 };
 
-DhtmlTest.clearTextarea = function(el)
+Jsir.clearTextarea = function(el)
 {
     el.value && (el.value = "");
-    el.innerHTML && DhtmlTest.clearNode(el);
+    el.innerHTML && Jsir.clearNode(el);
 };
 
-DhtmlTest.setTextarea = function(el, value) {
-    DhtmlTest.clearTextarea(el);
+Jsir.setTextarea = function(el, value) {
+    Jsir.clearTextarea(el);
     el.value = value;
     if (!el.innerHTML) {
 	var textNode = document.createTextNode(value);
@@ -204,13 +204,13 @@ DhtmlTest.setTextarea = function(el, value) {
     }
 };
 
-DhtmlTest.prototype.showSource = function(times)
+Jsir.prototype.showSource = function(times)
 {
     alert(this.sourceExecuted[times]);
 };
 
 // parameter: el - Cross Browsers el.outerHTML
-DhtmlTest.outerHTML = function(el)
+Jsir.outerHTML = function(el)
 {
     if (!el) { return el; }
     if (el && el.outerHTML) { return el.outerHTML; }
@@ -221,16 +221,16 @@ DhtmlTest.outerHTML = function(el)
     return outerHTML;
 };
 
-DhtmlTest.isElement = function(str)
+Jsir.isElement = function(str)
 {
     try {
 	var testEl = document.createElement(str); // Some Browser like IE will generate XML namespace for none-HTML tags.
 
 	var x, y;
-	x = DhtmlTest.outerHTML(testEl);
+	x = Jsir.outerHTML(testEl);
 	var htmlEl = document.createElement("html");
 	htmlEl.appendChild(testEl);
-	y = DhtmlTest.outerHTML(testEl);
+	y = Jsir.outerHTML(testEl);
 	delete testEl, htmlEl;
 	return x == y;
     }
@@ -241,11 +241,11 @@ DhtmlTest.isElement = function(str)
 };
 
 /*
- * DhtmlTest.setAttribute(el, 'id=')
- * DhtmlTest.setAttribute(el, 'id=mydiv')
- * DhtmlTest.setAttribute(el, 'style=height:50;width:30')
+ * Jsir.setAttribute(el, 'id=')
+ * Jsir.setAttribute(el, 'id=mydiv')
+ * Jsir.setAttribute(el, 'style=height:50;width:30')
  */
-DhtmlTest.setAttribute = function(el, attribute)
+Jsir.setAttribute = function(el, attribute)
 {
     var attr = attribute.split("=");
     var name = attr[0];
@@ -269,23 +269,23 @@ DhtmlTest.setAttribute = function(el, attribute)
 };
 
 /*
- * DhtmlTest.createElement('img', 'id=myimg,alt=,style=display:none;');
+ * Jsir.createElement('img', 'id=myimg,alt=,style=display:none;');
  */
-DhtmlTest.createElement = function(tag, property)
+Jsir.createElement = function(tag, property)
 {
     var el = document.createElement(tag);
     if (property) {
 	var prop = property.split(",");
 	for (var i=0; i<prop.length; i++) {
-	    DhtmlTest.setAttribute(el, prop[i]);
+	    Jsir.setAttribute(el, prop[i]);
 	}
     }
     return el;
 };
 
-DhtmlTest.wrapElement = function(node, tag, property)
+Jsir.wrapElement = function(node, tag, property)
 {
-    var el = DhtmlTest.createElement(tag, property);
+    var el = Jsir.createElement(tag, property);
     if (null == el.canHaveChildren || el.canHaveChildren) {
 	el.appendChild(node);
     }
@@ -305,9 +305,9 @@ DhtmlTest.wrapElement = function(node, tag, property)
     return el;
 };
 
-DhtmlTest.prototype.setDraft = function()
+Jsir.prototype.setDraft = function()
 {
-    var source = $(DhtmlTest.sourceId);
+    var source = $(Jsir.sourceId);
     if (source.value != "") {
 	    var fresh = true;
 	    for (var i=1; i<=this.times; i++) {
@@ -327,11 +327,11 @@ DhtmlTest.prototype.setDraft = function()
     this.setDraftButton();
 };
 
-DhtmlTest.prototype.setDraftButton = function()
+Jsir.prototype.setDraftButton = function()
 {
-    var currDraft = $(DhtmlTest.currDraft);
-    var privDraft = $(DhtmlTest.privDraft);
-    var nextDraft = $(DhtmlTest.nextDraft);
+    var currDraft = $(Jsir.currDraft);
+    var privDraft = $(Jsir.privDraft);
+    var nextDraft = $(Jsir.nextDraft);
 
     if (this.sourceDraftPointer >= this.sourceDraft.length || this.sourceDraftPointer < 0) {
 	this.sourceDraftPointer = this.sourceDraft.length-1;
@@ -343,47 +343,47 @@ DhtmlTest.prototype.setDraftButton = function()
     nextDraft.disabled = (this.sourceDraft.length - this.sourceDraftPointer) > 1 ? false : true;
 };
 
-DhtmlTest.prototype.getDraft = function(dir)
+Jsir.prototype.getDraft = function(dir)
 {
     this.sourceDraftPointer += dir;
     var draft = this.sourceDraft[this.sourceDraftPointer];
     if (draft) {
 	this.setDraft();
-	DhtmlTest.setTextarea($(DhtmlTest.sourceId), draft);
+	Jsir.setTextarea($(Jsir.sourceId), draft);
 	this.setDraft();
     }
 };
 
-DhtmlTest.prototype.clearSource = function()
+Jsir.prototype.clearSource = function()
 {
-    var source = $(DhtmlTest.sourceId);
+    var source = $(Jsir.sourceId);
     this.setDraft();
-    DhtmlTest.clearTextarea(source);
+    Jsir.clearTextarea(source);
 };
 
 // parameter: type - <script type="what?">
-DhtmlTest.wrapSource = function(tag, property)
+Jsir.wrapSource = function(tag, property)
 {
-    var source = $(DhtmlTest.sourceId);
+    var source = $(Jsir.sourceId);
     var textNode = document.createTextNode(source.value);
-    var el = DhtmlTest.wrapElement(textNode, tag, property);
-    source.value = DhtmlTest.outerHTML(el);
+    var el = Jsir.wrapElement(textNode, tag, property);
+    source.value = Jsir.outerHTML(el);
 };
 
 /*
- * DhtmlTest.appendSource('table', property, 'tbody', property, 'tr', property, 'td', property, 'textInTd');
- * DhtmlTest.appendSource(text1, text2, ...);
+ * Jsir.appendSource('table', property, 'tbody', property, 'tr', property, 'td', property, 'textInTd');
+ * Jsir.appendSource(text1, text2, ...);
  */
-DhtmlTest.appendSource = function()
+Jsir.appendSource = function()
 {
-    var source = $(DhtmlTest.sourceId);
+    var source = $(Jsir.sourceId);
     var el = [];
     var sourceText = "";
     for (var i=0; i<arguments.length; i++) {
-	if (DhtmlTest.isElement(arguments[i])) {
+	if (Jsir.isElement(arguments[i])) {
 	    var tag = arguments[i];
 	    var property = arguments[i+1];
-	    el[i] = DhtmlTest.createElement(tag, property);
+	    el[i] = Jsir.createElement(tag, property);
 	    el[i-2] && el[i-2].appendChild(el[i]);
 	    i++;
 	}
@@ -397,11 +397,11 @@ DhtmlTest.appendSource = function()
 	    }
 	}
     }
-    source.value += (el[0] ? DhtmlTest.outerHTML(el[0]) : "") + sourceText;
+    source.value += (el[0] ? Jsir.outerHTML(el[0]) : "") + sourceText;
 };
 
 // Will create: <node><A HREF=href event=handler(param)>text</A></node>
-DhtmlTest.prototype.newLink = function(node, text, href, event, handler, param)
+Jsir.prototype.newLink = function(node, text, href, event, handler, param)
 {
     var textNode = document.createTextNode(text);
     if (href || event) {
@@ -411,7 +411,7 @@ DhtmlTest.prototype.newLink = function(node, text, href, event, handler, param)
 	    a.href = href;
 	}
 	if (event) {
-	    a.onclick = DhtmlTest.callDo(this, handler, param);
+	    a.onclick = Jsir.callDo(this, handler, param);
 	}
 	node.appendChild(a);
     }
@@ -419,7 +419,7 @@ DhtmlTest.prototype.newLink = function(node, text, href, event, handler, param)
 	node.appendChild(textNode);
 };
 
-DhtmlTest.prototype.delTrackCell = function(times)
+Jsir.prototype.delTrackCell = function(times)
 {
     if (this.sandbox[times] != window) { this.closeWindow(times); }
     delete this.sandbox[times];
@@ -428,7 +428,7 @@ DhtmlTest.prototype.delTrackCell = function(times)
     this.setTrack();
 };
 
-DhtmlTest.prototype.newTrackCell = function(times)
+Jsir.prototype.newTrackCell = function(times)
 {
 	var handler;
 	var href = "#";
@@ -459,25 +459,25 @@ DhtmlTest.prototype.newTrackCell = function(times)
 	this.newLink(td, "[x]", href, event, handler, times);
 	this.newLink(td, sep);
 
-	var tbody = $(DhtmlTest.trackId).firstChild;
+	var tbody = $(Jsir.trackId).firstChild;
 	var tr = tbody.firstChild;
-	if (!tr || (tr.childNodes.length % DhtmlTest.trackMaxCols) == 0) {
+	if (!tr || (tr.childNodes.length % Jsir.trackMaxCols) == 0) {
 	    tr = document.createElement("tr");
 	    tbody.insertBefore(tr, tbody.firstChild);
 	}
 	tr.insertBefore(td, tr.firstChild);
 };
 
-DhtmlTest.prototype.setTrack = function()
+Jsir.prototype.setTrack = function()
 {
-    var tbody = $(DhtmlTest.trackId).firstChild;
-    DhtmlTest.clearNode(tbody);
+    var tbody = $(Jsir.trackId).firstChild;
+    Jsir.clearNode(tbody);
     for (var i=1; i<=this.times; i++) {
 	this.sandbox[i] && this.newTrackCell(i);
     }
 };
 
-DhtmlTest.prototype.removeDup = function()
+Jsir.prototype.removeDup = function()
 {
     for (var i=1; i<this.times; i++) {
 	if (this.source[this.times] == this.source[i]) {
@@ -492,44 +492,44 @@ DhtmlTest.prototype.removeDup = function()
     }
 };
 
-DhtmlTest.prototype.setTryCatch = function()
+Jsir.prototype.setTryCatch = function()
 {
     //var pattern = /(<script([^>](?!vbscript))*>)([\s\S]*?)(<\/script>)/ig;
     var pattern = /(<script([^>](?!vbscript)(?!src))*>)([\s\S]*?)(<\/script>)/ig;
     this.sourceExecuted[this.times] = this.sourceExecuted[this.times].replace(pattern, "$1 try { $3 } catch(e) { if (__error == null) var __error = []; __error.push(e.name + ' : ' + e.message) } $4");
 };
 
-DhtmlTest.prototype.setError = function()
+Jsir.prototype.setError = function()
 {
     var sandbox = this.sandbox[this.times];
 
     if (sandbox.__error) {
-	var span = DhtmlTest.createElement("span", "style=color:red");
+	var span = Jsir.createElement("span", "style=color:red");
 	var error;
 	for (var i=0; i<sandbox.__error.length; i++) {
 	    error = document.createTextNode((i+1) + ". " + sandbox.__error[i]);
-	    var br = DhtmlTest.createElement("br");
+	    var br = Jsir.createElement("br");
 	    span.appendChild(br);
 	    span.appendChild(error);
 	}
-	$(DhtmlTest.resultId).appendChild(span);
+	$(Jsir.resultId).appendChild(span);
 	sandbox.__error = null;
     }
 };
 
-DhtmlTest.prototype.test = function(mode)
+Jsir.prototype.test = function(mode)
 {
-    if ($(DhtmlTest.sourceId).value == "") return;
+    if ($(Jsir.sourceId).value == "") return;
     var times = ++this.times;
     var sandbox, type = null;
     switch(mode)
 	{
 	case 1:
-	    type = DhtmlTest.javascript;
+	    type = Jsir.javascript;
 	    sandbox = window;
 	    break;
 	case 2:
-	    type = DhtmlTest.vbscript;
+	    type = Jsir.vbscript;
 	    sandbox = window;
 	    break;
 	case 3:
@@ -545,41 +545,41 @@ DhtmlTest.prototype.test = function(mode)
 	}
 
     this.sandbox[times] = sandbox;
-    this.source[times] = $(DhtmlTest.sourceId).value;
+    this.source[times] = $(Jsir.sourceId).value;
     this.sourceExecuted[times] = this.source[times];
     this.removeDup();
 
     // wrap with <script> tag if need.
     if (type) {
 	var textNode = document.createTextNode(this.source[times]);
-	var script = DhtmlTest.wrapElement(textNode, 'script', 'type=' + type);
-	this.sourceExecuted[times] = DhtmlTest.outerHTML(script);
+	var script = Jsir.wrapElement(textNode, 'script', 'type=' + type);
+	this.sourceExecuted[times] = Jsir.outerHTML(script);
     }
     this.setTryCatch();
 
     var source = this.sourceExecuted[times];
     if (sandbox == window) {
-	if (DhtmlTest.permanentObj) {
+	if (Jsir.permanentObj) {
 	    if (times > 1) {
-		DhtmlTest.restore(this.doc); // Restore the document
+		Jsir.restore(this.doc); // Restore the document
 	    }
-	    DhtmlTest.setTextarea($(DhtmlTest.sourceId), this.source[times]); // for being able to read by textarea.innerHTML like textarea.value
-	    $(DhtmlTest.resultId).style.display = "block";
-	    htmlSource = _("html").innerHTML.replace(DhtmlTest.signature, source);
+	    Jsir.setTextarea($(Jsir.sourceId), this.source[times]); // for being able to read by textarea.innerHTML like textarea.value
+	    $(Jsir.resultId).style.display = "block";
+	    htmlSource = _("html").innerHTML.replace(Jsir.signature, source);
 
 	    sandbox.document.write(htmlSource);
 	    sandbox.document.close();
 	}
 	else {
 	    var div = document.createElement("div");
-	    if (DhtmlTest.abandonScript) {
-		div.innerHTML = DhtmlTest.outerHTML(DhtmlTest.createElement("hr", "style=display:none;")) + source;
+	    if (Jsir.abandonScript) {
+		div.innerHTML = Jsir.outerHTML(Jsir.createElement("hr", "style=display:none;")) + source;
 	    }
 	    else {
 		div.innerHTML = source;
 	    }
-	    var result = $(DhtmlTest.resultId);
-	    DhtmlTest.clearNode(result);
+	    var result = $(Jsir.resultId);
+	    Jsir.clearNode(result);
 	    result.appendChild(div);
 
 	    // Something goes interesting here.
@@ -593,13 +593,13 @@ DhtmlTest.prototype.test = function(mode)
 		    scripts[i].src = scripts[i].src;
 		}
 		else if (scripts[i].innerHTML) {
-		    window.execScript && window.execScript(scripts[i].innerHTML, DhtmlTest.exactScriptType(scripts[i].type));
+		    window.execScript && window.execScript(scripts[i].innerHTML, Jsir.exactScriptType(scripts[i].type));
 		}
 	    }
 	}
     }
     else {
-	DhtmlTest.clearNode($(DhtmlTest.resultId));
+	Jsir.clearNode($(Jsir.resultId));
 	htmlSource = source;
 
 	sandbox.document.write(htmlSource);
@@ -622,8 +622,8 @@ window.onload = __focus;
 </head>
 <body>
 
-<textarea id="__scriptPartOne" style="display: none;"><script type="text/javascript">function wrt() { document.write(opener.$(opener.DhtmlTest.scriptPartTwoId).value); document.close(); } window.onload=wrt; </script></textarea>
-<textarea id="__scriptPartTwo" style="display: none;"><script type="text/javascript">opener.DhtmlTest.permanentObj = true;</script></textarea>
+<textarea id="__scriptPartOne" style="display: none;"><script type="text/javascript">function wrt() { document.write(opener.$(opener.Jsir.scriptPartTwoId).value); document.close(); } window.onload=wrt; </script></textarea>
+<textarea id="__scriptPartTwo" style="display: none;"><script type="text/javascript">opener.Jsir.permanentObj = true;</script></textarea>
 
 <p>HTML and Script code here:</p>
 <div style="height: 350px;">
@@ -631,43 +631,43 @@ window.onload = __focus;
 <div style="height: 100%; width: 70%; float: left;">
 <textarea id="__source" style="height: 80%; width: 100%; margin-bottom: 10px; resize: none;"></textarea>
 
-<input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript">
-<input type="button" onclick="javascript: dhtmlTest.test(2);" value="VBS" id="__vbscript" disabled>
-<input type="button" onclick="javascript: dhtmlTest.test(3);" value="HTML/Script">
-<input type="button" onclick="javascript: dhtmlTest.test(4);" value="New Window">
-<input type="button" onclick="javascript: dhtmlTest.test(5);" value="Replace">
+<input type="button" onclick="javascript: jsir.test(1);" value="Javascript">
+<input type="button" onclick="javascript: jsir.test(2);" value="VBS" id="__vbscript" disabled>
+<input type="button" onclick="javascript: jsir.test(3);" value="HTML/Script">
+<input type="button" onclick="javascript: jsir.test(4);" value="New Window">
+<input type="button" onclick="javascript: jsir.test(5);" value="Replace">
 <br />
-<input type="button" onclick="javascript: dhtmlTest.clearSource();" value="Clear Code">
-<input type="button" onclick="javascript: DhtmlTest.wrapSource('script', 'type=' + DhtmlTest.javascript);" value="Wrap <script>">
-<input type="button" onclick="javascript: alert(dhtmlTest.sandbox[dhtmlTest.times].document.getElementById(DhtmlTest.resultId).innerHTML);" value="Result">
-<input type="button" onclick="javascript: dhtmlTest.getDraft(-1);" value=" << " id="__privDraft" disabled>
-<input type="button" onclick="javascript: dhtmlTest.getDraft(0);" value="Draft 0/0" id="__currDraft"disabled>
-<input type="button" onclick="javascript: dhtmlTest.getDraft(1);" value=" >> " id="__nextDraft" disabled>
+<input type="button" onclick="javascript: jsir.clearSource();" value="Clear Code">
+<input type="button" onclick="javascript: Jsir.wrapSource('script', 'type=' + Jsir.javascript);" value="Wrap <script>">
+<input type="button" onclick="javascript: alert(jsir.sandbox[jsir.times].document.getElementById(Jsir.resultId).innerHTML);" value="Result">
+<input type="button" onclick="javascript: jsir.getDraft(-1);" value=" << " id="__privDraft" disabled>
+<input type="button" onclick="javascript: jsir.getDraft(0);" value="Draft 0/0" id="__currDraft"disabled>
+<input type="button" onclick="javascript: jsir.getDraft(1);" value=" >> " id="__nextDraft" disabled>
 </div>
 
 <div style="height: 350px; overflow: hidden; padding-left: 10px;">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('script', 'type=' + DhtmlTest.javascript);" value="<script>"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('function () { }');" value="function( )"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('alert();');" value="alert( )">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.write();');" value="write( )"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementById()');" value="getElById( )"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByName()[0]');" value="getElsByName( )"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('document.getElementsByTagName()[0]');" value="getElsByTagName( )"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('table', null, 'tbody', null, 'tr', null, 'td', null, ' ');" value="<table>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('div', 'id=');" value="<div>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('p');" value="<p>"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('form', 'name=,id=');" value="<form>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('textarea', 'name=,id=');" value="<textarea>"><br />
-<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=text,length=20');" value="<input>">
-<input type="button" onclick="javascript: DhtmlTest.appendSource('input', 'name=,id=,type=button,value=button');" value="<button>"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('script', 'type=' + Jsir.javascript);" value="<script>"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('function () { }');" value="function( )"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('alert();');" value="alert( )">
+<input type="button" onclick="javascript: Jsir.appendSource('document.write();');" value="write( )"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('document.getElementById()');" value="getElById( )"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('document.getElementsByName()[0]');" value="getElsByName( )"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('document.getElementsByTagName()[0]');" value="getElsByTagName( )"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('table', null, 'tbody', null, 'tr', null, 'td', null, ' ');" value="<table>">
+<input type="button" onclick="javascript: Jsir.appendSource('div', 'id=');" value="<div>">
+<input type="button" onclick="javascript: Jsir.appendSource('p');" value="<p>"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('form', 'name=,id=');" value="<form>">
+<input type="button" onclick="javascript: Jsir.appendSource('textarea', 'name=,id=');" value="<textarea>"><br />
+<input type="button" onclick="javascript: Jsir.appendSource('input', 'name=,id=,type=text,length=20');" value="<input>">
+<input type="button" onclick="javascript: Jsir.appendSource('input', 'name=,id=,type=button,value=button');" value="<button>"><br />
 </div>
 
 </div>
 <script type="text/javascript">
-    DhtmlTest.abilityTest();
-    $(DhtmlTest.vbscriptId).disabled = DhtmlTest.noneVbscript;
-    if (typeof(dhtmlTest) == "undefined") {
-	 var dhtmlTest = new DhtmlTest();
+    Jsir.abilityTest();
+    $(Jsir.vbscriptId).disabled = Jsir.noneVbscript;
+    if (typeof(jsir) == "undefined") {
+	 var jsir = new Jsir();
     };
 </script>
 
