@@ -1,0 +1,337 @@
+<html>
+<head>
+<title>DHTML test</title>
+<script type="text/javascript">
+var DhtmlTest = function(sourceId)
+{
+    this.sourceId = sourceId;
+
+    this.times = 0;
+    this.sandbox = [];
+    this.source = [];
+    this.sourceExecuted = [];
+    this.inst = Math.random().toString().substr(2, 10);
+
+    var body = DhtmlTest.body();
+    DhtmlTest.createTrack(body);
+    DhtmlTest.createBound(body);
+    DhtmlTest.createResult(body);
+    DhtmlTest.createBound(body);
+
+    this.doc = DhtmlTest.backup();
+    //alert(this.doc.childNodes[0].innerHTML);
+};
+
+DhtmlTest.trackMaxCols = 3;
+
+DhtmlTest.createBound = function(node)
+{
+    var hr = document.createElement("hr");
+    node.appendChild(hr);
+};
+
+DhtmlTest.createTrack = function(node)
+{
+    var table = document.createElement("table");
+    var tbody = document.createElement("tbody");
+    table.id = "__track";
+    //table.style = "border-top: solid 1px";
+    table.appendChild(tbody);
+    node.appendChild(table);
+
+};
+
+DhtmlTest.createResult = function(node)
+{
+    var result = document.createElement("div");
+    result.id = "__result";
+    sign = document.createTextNode(String.fromCharCode('\xff'));
+    result.appendChild(sign);
+    node.appendChild(result);
+};
+
+DhtmlTest.backup = function()
+{
+    if (document.createRange) {
+        var r = document.createRange();
+        r.setStartBefore(document.firstChild);
+        r.setEndAfter(document.lastChild);
+        return r.cloneContents();
+    }
+    else {
+	return document.cloneNode(true);
+	/*
+	var doc = document.createDocumentFragment();
+	for (var i=0; i<document.childNodes.length; i++) {
+	    var doc
+	    doc.appendChild(document.childNodes[i]);
+	}
+	return doc;
+	*/
+    }
+};
+
+DhtmlTest.restore = function(doc)
+{
+    var clone = doc.cloneNode(true);
+    if (document.createRange) {
+	var r = document.createRange();
+	r.setStartBefore(document.firstChild);
+	r.setEndAfter(document.lastChild);
+	r.deleteContents();
+	document.appendChild(clone);
+    }
+    else {
+	DhtmlTest.clearNode(document);
+	for (var i=0; i<clone.childNodes.length; i++) {
+	    document.appendChild(clone.childNodes[i]);
+	}
+    }
+};
+
+DhtmlTest.html = function()
+{
+    return document.getElementsByTagName("html")[0];
+};
+
+DhtmlTest.body = function()
+{
+    return document.getElementsByTagName("body")[0];
+};
+
+DhtmlTest.result = function()
+{
+    return document.getElementById("__result");
+};
+
+DhtmlTest.track = function()
+{
+    return document.getElementById("__track");
+};
+
+DhtmlTest.prototype.textarea = function()
+{
+    return document.getElementById(this.sourceId);
+};
+
+DhtmlTest.prototype.getLastWindow = function()
+{
+    for (var i=this.sandbox.length-1; i>-1; i--)
+	if (this.sandbox[i] != window) return this.sandbox[i];
+    return null;
+};
+
+DhtmlTest.callDoOnClick = function(obj, foo, param)
+{
+    return function(ev){
+	obj[foo](param);
+    };
+};
+
+DhtmlTest.prototype.focusWindow = function(times)
+{
+    if(this.sandbox[times]) this.sandbox[times].focus();
+    return false;
+};
+
+DhtmlTest.prototype.closeWindow = function(times)
+{
+    if(this.sandbox[times]) this.sandbox[times].close();
+    return false;
+};
+
+DhtmlTest.prototype.setSource = function(times)
+{
+    var textNode = document.createTextNode(this.source[times]);
+    DhtmlTest.clearNode(this.textarea());
+    this.textarea().appendChild(textNode);
+    return false;
+};
+
+DhtmlTest.prototype.showSource = function(times)
+{
+    alert(this.sourceExecuted[times]);
+    return false;
+};
+
+DhtmlTest.clearNode = function(node)
+{
+    if (node) while (node.firstChild) { node.removeChild(node.firstChild); }
+};
+
+DhtmlTest.prototype.newLink = function(node, text, href, event, handler, param)
+{
+    var textNode = document.createTextNode(text);
+    if (href || event) {
+	var a = document.createElement("a");
+	a.appendChild(textNode);
+	if (href)
+	    a.href = href;
+	if (event) {
+	    a.onclick = DhtmlTest.callDoOnClick(this, handler, param);
+	    //a.onclick = 'javascript: dhtmlTest.showSource(1)';
+	    // a.setAttribute('onclick', dhtmlTest.showSource(1));
+	    //	    alert(a.onclick);
+	}
+	node.appendChild(a);
+    }
+    else
+	node.appendChild(textNode);
+};
+
+DhtmlTest.prototype.delTrackCell = function(times)
+{
+    this.closeWindow(times);
+    this.sandbox[times] = null;
+    this.source[times] = null;
+    this.sourceExecuted[times] = null;
+    this.setTrack();
+};
+
+DhtmlTest.prototype.newTrackCell = function(times)
+{
+	var handler;
+	var href = "#";
+	var event = "onclick";
+	var sep = " ";
+	var td = document.createElement("td");
+	td.id = "__track_td_" + times;
+
+	//if (this.sandbox[times] != window)
+		handler = "focusWindow";
+	this.newLink(td, "No. " + times, href, event, handler, times);
+	this.newLink(td, sep);
+
+	handler = "setSource";
+	this.newLink(td, "Reuse", href, event, handler, times);
+	this.newLink(td, sep);
+
+	handler = "showSource";
+	this.newLink(td, "Show", href, event, handler, times);
+	this.newLink(td, sep);
+
+	//if (this.sandbox[times] != window)
+		handler = "delTrackCell";
+	this.newLink(td, "[x]", href, event, handler, times);
+	this.newLink(td, sep);
+
+	var tbody = DhtmlTest.track().firstChild;
+	var tr = tbody.firstChild;
+	if (!tr || (tr.childNodes.length % DhtmlTest.trackMaxCols) == 0) {
+	    tr = document.createElement("tr");
+	    tbody.insertBefore(tr, tbody.firstChild);
+	}
+	tr.insertBefore(td, tr.firstChild);
+};
+
+DhtmlTest.prototype.setTrack = function()
+{
+    var tbody = DhtmlTest.track().firstChild;
+    DhtmlTest.clearNode(tbody);
+    for (var i=1; i<=this.times; i++) {
+	if (this.sandbox[i]) {
+	    this.newTrackCell(i);
+	}
+    }
+};
+
+DhtmlTest.prototype.test = function(mode)
+{
+    var times = ++this.times;
+    var sandbox, type = null;
+    switch(mode)
+	{
+	case 1:
+	    type = "text/javascript";
+	    sandbox = window;
+	    break;
+	case 2:
+	    type = "text/vbscript";
+	    sandbox = window;
+	    break;
+	case 3:
+	    sandbox = window;
+	    break;
+	case 4:
+	    sandbox = window.open("", this.inst + times);
+	    break;
+	case 5:
+	    sandbox = this.getLastWindow();
+	    if (sandbox) sandbox.close();
+	    sandbox = window.open("", this.inst + times);
+	}
+    this.sandbox[times] = sandbox;
+    this.source[times] = this.textarea().value;
+    this.sourceExecuted[times] = this.source[times];
+
+    if (sandbox == window) {
+	if (times > 1)
+	    // Restore the document
+	    DhtmlTest.restore(this.doc);
+
+	// for being able to read by textarea.innerHTML like textarea.value
+	this.setSource(times);
+
+	if (type) {
+	    var script = document.createElement("script");
+	    script.type = type;
+	    if (null == script.canHaveChildren || script.canHaveChildren) {
+		var textNode = document.createTextNode(this.source[times]);
+		script.appendChild(textNode);
+	    }
+	    else
+		script.text = this.source[times];
+	    this.sourceExecuted[times] = script.outerHTML;
+	}
+
+	htmlSource = DhtmlTest.html().innerHTML.replace(String.fromCharCode('\xff'), this.sourceExecuted[times]);
+    }
+    else {
+	DhtmlTest.clearNode(DhtmlTest.result());
+	htmlSource = this.sourceExecuted[times];
+    };
+
+    sandbox.document.open();
+    sandbox.document.write(htmlSource);
+    sandbox.document.close();
+
+    if (sandbox == window) {
+	// Generate the track links
+	// Have to set this after the document.write(), because there are onclick events handler set in the setTrack();
+	this.setTrack();
+    }
+};
+
+function __focus()
+{
+    document.getElementById("__source").focus();
+};
+
+window.onload = __focus;
+
+</script>
+
+</head>
+<body>
+<form>
+<p>HTML and Script code here:</p>
+<textarea id="__source" cols="60" rows="20"></textarea>
+<br />
+<input type="button" onclick="javascript: dhtmlTest.test(1);" value="Javascript">
+<input type="button" onclick="javascript: dhtmlTest.test(2);" value="VBScript (Only IE)">
+<input type="button" onclick="javascript: dhtmlTest.test(3);" value="HTML and/or Script">
+<input type="button" onclick="javascript: dhtmlTest.test(4);" value="New window">
+<input type="button" onclick="javascript: dhtmlTest.test(5);" value="New same window">
+<input type="button" onclick="javascript: alert(document.getElementsByTagName('html')[0].innerHTML);" value="New same window">
+<br />
+<input type="reset" value="Clear">
+</form>
+
+<script type="text/javascript">
+    if (!dhtmlTest) {
+	var dhtmlTest = new DhtmlTest("__source");
+    };
+</script>
+
+</body>
+</html>
