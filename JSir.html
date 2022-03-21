@@ -1,0 +1,626 @@
+<html>
+<head>
+<title>JSir - JavaScript Instant Runner</title>
+
+<script type="text/javascript">
+
+/*
+ * document.getElementById
+ */
+function $ (id) {
+    return document.getElementById(id);
+}
+
+/*
+ * document.getElementByTagName
+ */
+function _ (tag, index) {
+    return document.getElementsByTagName(tag)[index ? index : 0];
+}
+
+/*
+ * Test whether VBScript is supported.
+ */
+ifVbscript = function () {
+    try {
+        window.execScript('dim a', 'vbscript');
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
+/*
+ * Test whether the global context is volatile.
+ * Most browsers wipe the global context on document.write() or document.open().
+ * Some browsers, like Chrome, keep the global context in the situation.
+ */
+ifVolatileContext = function () {
+   let sandbox = window.open();
+   sandbox["key"] = 1;
+   sandbox.document.write('<script defer type="text/javascript">document.write("");<\/script>');
+   sandbox.document.close();
+   let volatile = !"key" in sandbox;
+   sandbox.close();
+
+   return volatile;
+};
+
+/*
+ * Backup the entire document node
+ */
+backup = function () {
+    if (document.createRange) { // for Firefox and Chrome
+        let range = document.createRange();
+        range.setStartBefore(document.firstChild);
+        range.setEndAfter(document.lastChild);
+
+        return range.cloneContents();
+    } else if (document.createDocumentFragment) { // for Firefox, Chrome and IE
+        let doc = document.createDocumentFragment();
+        for (let i = 0; i < document.childNodes.length; i++) {
+            // Need a clone here, otherwise appendChild() will change the original
+            let newNode = doc.childNodes[i].cloneNode(true);
+            doc.appendChild(newNode);
+        }
+
+        return doc;
+    } else if (document.cloneNode) {
+        /*
+         * Bugs with document.cloneNode(true):
+         *   Chrome : always return null
+         *   IE     : lose the content wrapped with <script><\/script>
+         */
+        return document.cloneNode(true);
+    }
+};
+
+/*
+ * Restore the entire document from the saved node
+ */
+restore = function (node) {
+    if (node) {
+        removeAllChild(document);
+        document.appendChild(node);
+    }
+};
+
+/*
+ * Remove all child nodes
+ */
+removeAllChild = function (node) {
+    if (node && node.hasChildNodes()) {
+        if (document.createRange) { // for Chrome, Firefox
+            // faster method
+            let range = document.createRange();
+            range.setStartBefore(node.firstChild);
+            range.setEndAfter(node.lastChild);
+            range.deleteContents();
+        } else { // for IE
+            // with the huge amount of children, this may lead to performance issue
+            while (node.firstChild) {
+                node.removeChild(node.firstChild);
+            }
+        }
+    }
+};
+
+clearTextarea = function (el) {
+    if (el) {
+        el.value && (el.value = "");
+        el.innerHTML && removeAllChild(el);
+    }
+};
+
+setTextarea = function (el, value) {
+    if (el) {
+        clearTextarea(el);
+        el.value = value;
+        if (!el.innerHTML) {
+            let textNode = document.createTextNode(value);
+            el.appendChild(textNode);
+        }
+    }
+};
+
+callDo = function (obj, func, param) {
+    return function (event) {
+        obj[func](param);
+        return false; // To avoid to navigate away from where called callDo();
+    };
+};
+
+getScriptType = function (type) {
+    return type.split("/")[1];
+};
+
+/*
+ * Jsir.setAttribute(el, 'id=')
+ * Jsir.setAttribute(el, 'id=mydiv')
+ * Jsir.setAttribute(el, 'style=height:50;width:30')
+ */
+setAttribute = function (el, attribute) {
+    let attr = attribute.split("="),
+        name = attr[0],
+        value = attr[1];
+
+    if (!value) {
+        el[name] = value;
+        return;
+    }
+    let pair = value.split(";");
+    for (let i = 0; i < pair.length; i++) {
+        if (!pair[i]) { continue; }
+        pair[i] = pair[i].split(":");
+        if (pair[i].length > 1) {
+            el[name][pair[i][0]] = pair[i][1];
+        } else {
+            el[name] = pair[i][0];
+        }
+    }
+};
+
+/*
+ * Jsir.createElement('img', 'id=myimg,alt=,style=display:none;');
+ */
+createElement = function (tag, property) {
+    let el = document.createElement(tag),
+        prop,
+        i;
+    if (property) {
+        prop = property.split(",");
+        for (i = 0; i < prop.length; i++) {
+            JSir.setAttribute(el, prop[i]);
+        }
+    }
+    return el;
+};
+
+wrapElement = function (node, tag, property) {
+    let el = JSir.createElement(tag, property);
+    if (null === el.canHaveChildren || el.canHaveChildren) {
+        el.appendChild(node);
+    } else { // IE won't append any child to <script>
+        switch (node.nodeType) {
+        case 1: // Element
+            el.text = node.innerHTML;
+            break;
+        case 3: // Text
+        case 4: // CDATASection
+        case 8: // Comment
+            el.text = node.nodeValue;
+            break;
+        }
+    }
+    return el;
+};
+
+/*
+ * foo node <javascript | vbscript>
+ */
+wrapScriptElement = function (node, type) {
+    return wrapElement(node, 'script', 'type=text/' + type);
+}
+
+/*
+ * parameter: type - <script type="what?">
+ */
+wrapSource = function (tag, property) {
+    let source = $(JSir.sourceId),
+        textNode = document.createTextNode(source.value),
+        el = JSir.wrapElement(textNode, tag, property);
+    source.value = JSir.outerHTML(el);
+};
+
+JSir.prototype.focusWindow = function (index) {
+    let sandbox = this.sandbox[index];
+    sandbox && sandbox.focus && sandbox.focus();
+};
+
+JSir.prototype.closeWindow = function (index) {
+    let sandbox = this.sandbox[index];
+    sandbox && !sandbox.closed && sandbox.close();
+};
+
+/*
+ * Will create: <node><A HREF=href event=handler(param)>text</A></node>
+ */
+prototype.newLink = function (node, text, href, event, handler, param) {
+    let textNode = document.createTextNode(text),
+        a;
+    if (href || event) {
+        a = document.createElement("a");
+        a.appendChild(textNode);
+        if (href) {
+            a.href = href;
+        }
+        if (event) {
+            a.onclick = JSir.callDo(this, handler, param);
+        }
+        node.appendChild(a);
+    } else {
+        node.appendChild(textNode);
+    }
+};
+
+/*
+ * Define Jsir Class
+ */
+let Jsir = function () {
+    this.index = 0;
+    this.sandbox = [];
+    this.source = [];
+    this.sourceExecuted = [];
+    this.sourceDraft = []; // for storing the temperory editing.
+    this.sourceDraftPointer = 0;
+    this.identity = Math.random().toString().substr(2, 10);
+
+    let body = _("body");
+    JSir.createTrack(body);
+    JSir.createResult(body);
+
+    JSir.supportVbscript = ifVbscript();
+    JSir.persisted = ifPersistedAfterDocumentWrite();
+    JSir.stripScript = ifStripScriptTagWhenInnerHtml();
+
+    if (JSir.persisted) {
+        this.doc = JSir.backup();
+    }
+};
+
+JSir.sourceId = "__source";
+JSir.trackId = "__track";
+JSir.resultId = "__result";
+JSir.trackMaxCols = 3;
+JSir.signature = "\x10\x7f\x00";
+JSir.vbscriptId = "__vbscript";
+JSir.currDraft = "__currDraft";
+JSir.privDraft = "__privDraft";
+JSir.nextDraft = "__nextDraft";
+
+JSir.createBound = function (node) {
+    let hr = document.createElement("hr");
+    node.appendChild(hr);
+};
+
+/*
+ * parameter: node - where to append
+ */
+JSir.createTrack = function (node) {
+    let table = document.createElement("table"),
+        tbody = document.createElement("tbody");
+    table.id = JSir.trackId;
+    //table.style = "border-top: solid 1px";
+    table.appendChild(tbody);
+    node.appendChild(table);
+};
+
+/*
+ * parameter: node - where to append
+ */
+JSir.createResult = function (node) {
+    let result = document.createElement("div"),
+        signature;
+    result.id = JSir.resultId;
+    if (JSir.persisted) {
+        result.style.display = "none";
+        signature = document.createTextNode(JSir.signature);
+        result.appendChild(signature);
+    }
+    node.appendChild(result);
+};
+
+
+JSir.prototype.getLastWindow = function () {
+    let i;
+    for (i = this.sandbox.length - 1; i > -1; i--) {
+        if (this.sandbox[i] !== window) {
+            return this.sandbox[i];
+        }
+    }
+    return null;
+};
+
+JSir.prototype.reuseSource = function (index) {
+    let source = $(JSir.sourceId);
+    this.setDraft();
+    JSir.setTextarea(source, this.source[index]);
+};
+
+JSir.prototype.showSource = function (index) {
+    window.alert(this.sourceExecuted[index]);
+};
+
+JSir.prototype.setDraft = function () {
+    let source = $(JSir.sourceId),
+        fresh,
+        i;
+    if (source.value !== "") {
+        fresh = true;
+        for (i = 1; i <= this.index; i++) {
+            if (source.value === this.source[i]) {
+                fresh = false;
+                break;
+            }
+        }
+        for (i = 0; i < this.sourceDraft.length; i++) {
+            if (source.value === this.sourceDraft[i]) {
+                fresh = false;
+                break;
+            }
+        }
+        fresh && this.sourceDraft.push(source.value);
+    }
+    this.setDraftButton();
+};
+
+JSir.prototype.setDraftButton = function () {
+    let currDraft = $(JSir.currDraft),
+        privDraft = $(JSir.privDraft),
+        nextDraft = $(JSir.nextDraft);
+
+    if (this.sourceDraftPointer >= this.sourceDraft.length || this.sourceDraftPointer < 0) {
+        this.sourceDraftPointer = this.sourceDraft.length - 1;
+    }
+
+    currDraft.value = "Draft " + (this.sourceDraftPointer + 1) + "/" + this.sourceDraft.length;
+    currDraft.disabled = this.sourceDraft.length ? false : true;
+    privDraft.disabled = this.sourceDraftPointer > 0 ? false : true;
+    nextDraft.disabled = (this.sourceDraft.length - this.sourceDraftPointer) > 1 ? false : true;
+};
+
+JSir.prototype.getDraft = function (dir) {
+    this.sourceDraftPointer += dir;
+    let draft = this.sourceDraft[this.sourceDraftPointer];
+    if (draft) {
+        this.setDraft();
+        JSir.setTextarea($(JSir.sourceId), draft);
+        this.setDraft();
+    }
+};
+
+JSir.prototype.clearSource = function () {
+    let source = $(JSir.sourceId);
+    this.setDraft();
+    JSir.clearTextarea(source);
+};
+
+JSir.prototype.delTrackCell = function (index) {
+    if (this.sandbox[index] !== window) { this.closeWindow(index); }
+    delete this.sandbox[index];
+    delete this.source[index];
+    delete this.sourceExecuted[index];
+    this.setTrack();
+};
+
+JSir.prototype.newTrackCell = function (index) {
+    let handler,
+        href = "#",
+        event = "onclick",
+        sep = " ",
+        td = document.createElement("td"),
+        tr,
+        tbody;
+
+    if (this.sandbox[index] != window) {
+        handler = "activeWindow";
+        this.newLink(td, "No. " + index, href, event, handler, index);
+    } else {
+        this.newLink(td, "No. " + index);
+    }
+
+    this.newLink(td, "No. " + index);
+    this.newLink(td, sep);
+
+    handler = "reuseSource";
+    this.newLink(td, "Reuse", href, event, handler, index);
+    this.newLink(td, sep);
+    
+    handler = "showSource";
+    this.newLink(td, "Show", href, event, handler, index);
+    this.newLink(td, sep);
+    
+    handler = "delTrackCell";
+    this.newLink(td, "[x]", href, event, handler, index);
+    this.newLink(td, sep);
+    
+    tbody = $(JSir.trackId).firstChild;
+    tr = tbody.firstChild;
+    if (!tr || (tr.childNodes.length % JSir.trackMaxCols) === 0) {
+        tr = document.createElement("tr");
+        tbody.insertBefore(tr, tbody.firstChild);
+    }
+    tr.insertBefore(td, tr.firstChild);
+};
+
+JSir.prototype.setTrack = function () {
+    let tbody = $(JSir.trackId).firstChild,
+        i;
+    JSir.clearNode(tbody);
+    for (i = 1; i <= this.index; i++) {
+        this.sandbox[i] && this.newTrackCell(i);
+    }
+};
+
+JSir.prototype.removeDup = function () {
+    let i;
+    for (i = 1; i < this.index; i++) {
+        if (this.source[this.index] === this.source[i]) {
+            this.delTrackCell(i);
+        }
+    }
+
+    for (i = 0; i < this.sourceDraft.length; i++) {
+        if (this.source[this.index] === this.sourceDraft[i]) {
+            this.sourceDraft.splice(i, 1);
+        }
+    }
+};
+
+JSir.prototype.setTryCatch = function () {
+    //let pattern = /(<script([^>](?!vbscript))*>)([\s\S]*?)(<\/script>)/ig;
+    let pattern = /(<script([^>](?!vbscript)(?!src))*>)([\s\S]*?)(<\/script>)/ig;
+    this.sourceExecuted[this.index] = this.sourceExecuted[this.index].replace(pattern, "$1 try { $3 } catch(e) { if (__error == null) let __error = []; __error.push(e.name + ' : ' + e.message) } $4");
+};
+
+JSir.prototype.setError = function () {
+    let sandbox = this.sandbox[this.index],
+        span,
+        error,
+        i,
+        br;
+
+    if (sandbox.__error) {
+        span = JSir.createElement("span", "style=color:red");
+        for (i = 0; i < sandbox.__error.length; i++) {
+            error = document.createTextNode((i + 1) + ". " + sandbox.__error[i]);
+            br = JSir.createElement("br");
+            span.appendChild(br);
+            span.appendChild(error);
+        }
+        $(JSir.resultId).appendChild(span);
+        sandbox.__error = null;
+    }
+};
+
+JSir.prototype.test = function (mode) {
+    let index,
+        sandbox,
+        type,
+        textNode,
+        source,
+        div,
+        result,
+        script,
+        scripts,
+        htmlSource,
+        i;
+
+    if ($(JSir.sourceId).value === "") { return; }
+    index = ++this.index;
+    type = null;
+
+    switch (mode) {
+    case 1: 
+        type = JSir.javascript;
+        sandbox = window;
+        break;
+    case 2: 
+        type = JSir.vbscript;
+        sandbox = window;
+        break;
+    case 3: 
+        sandbox = window;
+        break;
+    case 4: 
+        sandbox = window.open("", this.identity + index);
+        break;
+    case 5: 
+        sandbox = this.getLastWindow();
+        sandbox && !sandbox.closed && sandbox.close();
+        sandbox = window.open("", this.identity + index);
+        break;
+    }
+
+    this.sandbox[index] = sandbox;
+    this.source[index] = $(JSir.sourceId).value;
+    this.sourceExecuted[index] = this.source[index];
+    this.removeDup();
+
+    // wrap with <script> tag if need.
+    if (type) {
+        textNode = document.createTextNode(this.source[index]);
+        script = JSir.wrapScriptElement(textNode, type);
+        this.sourceExecuted[index] = JSir.outerHTML(script);
+    }
+    this.setTryCatch();
+
+    source = this.sourceExecuted[index];
+    if (sandbox === window) {
+        if (JSir.persisted) {
+            if (index > 1) {
+                JSir.restore(this.doc); // Restore the document
+            }
+            JSir.setTextarea($(JSir.sourceId), this.source[index]); // for being able to read by textarea.innerHTML like textarea.value
+            $(JSir.resultId).style.display = "block";
+            htmlSource = _("html").innerHTML.replace(JSir.signature, source);
+
+            sandbox.document.write(htmlSource);
+            sandbox.document.close();
+        } else {
+            div = document.createElement("div");
+            if (JSir.stripScript) {
+                div.innerHTML = JSir.outerHTML(JSir.createElement("hr", "style=display:none;")) + source;
+            } else {
+                div.innerHTML = source;
+            }
+            result = $(JSir.resultId);
+            JSir.clearNode(result);
+            result.appendChild(div);
+
+            // Something goes interesting here.
+            // IE and Firefox will go here, but not Chome because its permanentObj is true.
+            // At this moment, Firefox has finished all execution whatever the embeded or the external by SRC.
+            // All following code are actually for IE.
+            // The two method(Reassign SRC and execScript) will pull the triger of scripting in IE but not Firefox.
+            scripts = result.getElementsByTagName("script");
+            for (i = 0; i < scripts.length; i++) {
+                if (scripts[i].src) {
+                    scripts[i].src = scripts[i].src;
+                } else {
+                    if (scripts[i].innerHTML) {
+                        window.execScript && window.execScript(scripts[i].innerHTML, getScriptType(scripts[i].type));
+                    }
+                }
+            }
+        }
+    } else {
+        JSir.clearNode($(JSir.resultId));
+        htmlSource = source;
+
+        sandbox.document.write(htmlSource);
+        sandbox.document.close();
+    }
+
+    // Generate the track links
+    // Have to set this after the document.write(), because document.write() will destroy the onclick eventsset in the setTrack();
+    this.setTrack();
+    this.setDraftButton();
+    this.setError();
+};
+
+window.onload = __focus;
+</script>
+
+</head>
+<body>
+
+
+<p>HTML and Script code here:</p>
+<div style="height: 350px;">
+
+<div style="height: 100%; width: 70%; float: left;">
+<textarea id="__source" style="height: 80%; width: 100%; margin-bottom: 10px; resize: none;"></textarea>
+
+<input type="button" onclick="jsir.test(1);" value="Javascript">
+<input type="button" onclick="jsir.test(2);" value="VBS" id="__vbscript" disabled>
+<input type="button" onclick="jsir.test(3);" value="HTML/Script">
+<input type="button" onclick="jsir.test(4);" value="New Window">
+<input type="button" onclick="jsir.test(5);" value="Replace">
+<br />
+<input type="button" onclick="jsir.clearSource();" value="Clear Code">
+<input type="button" onclick="JSir.wrapSource('script', 'type=' + JSir.javascript);" value="Wrap <script>">
+<input type="button" onclick="window.alert(jsir.sandbox[jsir.index].document.getElementById(JSir.resultId).innerHTML);" value="Result">
+<input type="button" onclick="jsir.getDraft(-1);" value=" << " id="__privDraft" disabled>
+<input type="button" onclick="jsir.getDraft(0);" value="Draft 0/0" id="__currDraft"disabled>
+<input type="button" onclick="jsir.getDraft(1);" value=" >> " id="__nextDraft" disabled>
+</div>
+</div>
+<script type="text/javascript">
+    if (typeof(jsir) === "undefined") {
+        let jsir = new JSir();
+    }
+</script>
+
+</body>
+</html>
